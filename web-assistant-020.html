@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>020 Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: #f0f0f0;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.hidden {
+            display: none;
+        }
+
+        .sidebar h3 {
+            color: #007acc;
+            margin: 20px 0 10px 0;
+            font-size: 16px;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .sidebar button:hover {
+            background: #005a9e;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-bottom: 2px solid #007acc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #007acc;
+            font-size: 24px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toggle-sidebar {
+            padding: 8px 15px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: #e8f1ff;
+            padding: 10px 20px;
+            gap: 5px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 8px 20px;
+            background: white;
+            border: 2px solid #007acc;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background: #007acc;
+            color: white;
+        }
+
+        .new-tab-btn {
+            padding: 8px 15px;
+            background: #45a29e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .chat-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        .message {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .user-message {
+            color: #0057e7;
+            font-weight: bold;
+        }
+
+        .assistant-message {
+            color: #008744;
+        }
+
+        .link {
+            color: #007acc;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .link:hover {
+            color: #005a9e;
+        }
+
+        /* Input Area */
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            border: 2px solid #007acc;
+            border-radius: 5px;
+        }
+
+        .input-area button {
+            padding: 12px 20px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .mic-btn {
+            background: #45a29e !important;
+        }
+
+        .input-area button:hover {
+            opacity: 0.9;
+        }
+
+        /* Calculator */
+        .calculator {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .calc-display {
+            grid-column: 1 / -1;
+            padding: 10px;
+            text-align: right;
+            background: white;
+            border: 2px solid #007acc;
+            border-radius: 5px;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .calc-btn {
+            padding: 15px;
+            background: #45a29e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .calc-btn.equals {
+            grid-column: 1 / -1;
+            background: #007acc;
+        }
+
+        /* Notepad */
+        .notepad {
+            margin-top: 10px;
+        }
+
+        .notepad textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 2px solid #007acc;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            resize: vertical;
+        }
+
+        .notepad-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .notepad-controls button {
+            padding: 8px;
+            font-size: 11px;
+        }
+
+        /* Drawing Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawing-canvas {
+            border: 2px solid #007acc;
+            cursor: crosshair;
+            background: white;
+            margin: 10px 0;
+        }
+
+        .drawing-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Theme Select */
+        select {
+            padding: 8px;
+            border: 2px solid #007acc;
+            border-radius: 5px;
+            background: white;
+            margin: 5px 0;
+        }
+
+        /* Settings */
+        .setting-group {
+            margin: 10px 0;
+        }
+
+        .setting-group label {
+            display: block;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .setting-group input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #007acc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <h3>⚙️ Settings</h3>
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="autoSpeak" checked> Auto Text-to-Speech
+                </label>
+                <label>
+                    <input type="checkbox" id="stayOn" checked> Stay On After Tasks
+                </label>
+            </div>
+
+            <h3>🎨 Theme</h3>
+            <select id="themeSelect">
+                <option value="white">White</option>
+                <option value="blue">Blue</option>
+                <option value="pink">Pink</option>
+                <option value="skin">Skin</option>
+            </select>
+            <button onclick="applyTheme()">🎨 Apply Theme</button>
+
+            <h3>🎨 Text Color</h3>
+            <select id="textColorSelect">
+                <option value="black">Black</option>
+                <option value="#0057e7">Blue</option>
+                <option value="#008744">Green</option>
+                <option value="#d62d20">Red</option>
+                <option value="#673ab7">Purple</option>
+            </select>
+            <button onclick="applyTextColor()">Apply Color</button>
+
+            <h3>🧮 Calculator</h3>
+            <div class="calculator">
+                <input type="text" class="calc-display" id="calcDisplay" readonly>
+                <button class="calc-btn" onclick="calcClick('7')">7</button>
+                <button class="calc-btn" onclick="calcClick('8')">8</button>
+                <button class="calc-btn" onclick="calcClick('9')">9</button>
+                <button class="calc-btn" onclick="calcClick('/')">÷</button>
+                <button class="calc-btn" onclick="calcClick('4')">4</button>
+                <button class="calc-btn" onclick="calcClick('5')">5</button>
+                <button class="calc-btn" onclick="calcClick('6')">6</button>
+                <button class="calc-btn" onclick="calcClick('*')">×</button>
+                <button class="calc-btn" onclick="calcClick('1')">1</button>
+                <button class="calc-btn" onclick="calcClick('2')">2</button>
+                <button class="calc-btn" onclick="calcClick('3')">3</button>
+                <button class="calc-btn" onclick="calcClick('-')">-</button>
+                <button class="calc-btn" onclick="calcClick('0')">0</button>
+                <button class="calc-btn" onclick="calcClick('.')">.</button>
+                <button class="calc-btn" onclick="calcClick('C')">C</button>
+                <button class="calc-btn" onclick="calcClick('+')">+</button>
+                <button class="calc-btn equals" onclick="calcClick('=')">=</button>
+            </div>
+
+            <h3>📝 Notepad</h3>
+            <div class="notepad">
+                <textarea id="notepad" placeholder="Write your notes here..."></textarea>
+                <div class="notepad-controls">
+                    <button onclick="saveNote()">💾 Save</button>
+                    <button onclick="clearNote()">🧹 Clear</button>
+                </div>
+            </div>
+
+            <h3>🎨 Drawing</h3>
+            <button onclick="openDrawing()">🖌️ Open Drawing Pad</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <h1>🤖 020 — PERSONAL AI ASSISTANT</h1>
+                <div class="header-controls">
+                    <button class="toggle-sidebar" onclick="toggleSidebar()">⚙️ Settings</button>
+                </div>
+            </div>
+
+            <div class="tabs" id="tabsContainer">
+                <button class="new-tab-btn" onclick="createNewTab()">🗂 New Tab</button>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-output" id="chatOutput"></div>
+                <div class="input-area">
+                    <input type="text" id="userInput" placeholder="Type your command or question..." onkeypress="handleKeyPress(event)">
+                    <button class="mic-btn" onclick="startVoiceRecognition()">🎤 Mic</button>
+                    <button onclick="sendMessage()">Go 🔍</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drawing Modal -->
+    <div class="modal" id="drawingModal">
+        <div class="modal-content">
+            <h2>🎨 Drawing Notebook</h2>
+            <div class="drawing-controls">
+                <span>Color:</span>
+                <div class="color-btn" style="background: black;" onclick="setPenColor('black')"></div>
+                <div class="color-btn" style="background: red;" onclick="setPenColor('red')"></div>
+                <div class="color-btn" style="background: blue;" onclick="setPenColor('blue')"></div>
+                <div class="color-btn" style="background: green;" onclick="setPenColor('green')"></div>
+                <div class="color-btn" style="background: orange;" onclick="setPenColor('orange')"></div>
+                <div class="color-btn" style="background: purple;" onclick="setPenColor('purple')"></div>
+                <span style="margin-left: 20px;">Size:</span>
+                <input type="range" min="1" max="30" value="3" id="penSize" onchange="setPenSize(this.value)">
+                <button onclick="clearCanvas()">🧹 Clear</button>
+                <button onclick="saveDrawing()">💾 Save</button>
+                <button onclick="closeDrawing()">❌ Close</button>
+            </div>
+            <canvas class="drawing-canvas" id="drawingCanvas" width="700" height="500"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let tabs = [];
+        let currentTabIndex = 0;
+        let penColor = 'black';
+        let penSize = 3;
+        let isDrawing = false;
+        let recognition = null;
+
+        // Themes
+        const themes = {
+            white: '#ffffff',
+            blue: '#e8f1ff',
+            pink: '#ffe8f0',
+            skin: '#fbe8d3'
+        };
+
+        // Initialize
+        function init() {
+            createNewTab();
+            speak("Hello! I am 020 Assistant. How can I help you today?");
+            setupCanvas();
+            setupVoiceRecognition();
+        }
+
+        // Text-to-Speech
+        function speak(text) {
+            const autoSpeak = document.getElementById('autoSpeak').checked;
+            if (!autoSpeak) return;
+
+            const utterance = new SpeechSynthesisUtterance(text.replace('020', 'zero two zero'));
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Voice Recognition Setup
+        function setupVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('userInput').value = transcript;
+                    addMessage(`You (Voice): ${transcript}`, 'user-message');
+                    processCommand(transcript);
+                };
+
+                recognition.onerror = function(event) {
+                    speak("Sorry, I couldn't understand. Please try again.");
+                };
+            }
+        }
+
+        function startVoiceRecognition() {
+            if (recognition) {
+                speak("Listening...");
+                recognition.start();
+            } else {
+                alert("Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari.");
+            }
+        }
+
+        // Tab Management
+        function createNewTab() {
+            const tabId = tabs.length;
+            tabs.push({ id: tabId, name: `Chat ${tabId + 1}` });
+            
+            const tabsContainer = document.getElementById('tabsContainer');
+            const newTabBtn = tabsContainer.querySelector('.new-tab-btn');
+            
+            const tab = document.createElement('button');
+            tab.className = 'tab';
+            tab.textContent = `Chat ${tabId + 1}`;
+            tab.onclick = () => switchTab(tabId);
+            
+            tabsContainer.insertBefore(tab, newTabBtn);
+            switchTab(tabId);
+            
+            addMessage("020 Assistant: New chat tab ready!", 'assistant-message');
+        }
+
+        function switchTab(index) {
+            currentTabIndex = index;
+            const tabButtons = document.querySelectorAll('.tab');
+            tabButtons.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+
+        // Message Handling
+        function addMessage(text, className = '') {
+            const output = document.getElementById('chatOutput');
+            const msg = document.createElement('div');
+            msg.className = `message ${className}`;
+            msg.innerHTML = text;
+            output.appendChild(msg);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            
+            if (!text) {
+                speak("Please type something first.");
+                return;
+            }
+            
+            addMessage(`You: ${text}`, 'user-message');
+            input.value = '';
+            processCommand(text);
+        }
+
+        // Command Processing
+        async function processCommand(cmd) {
+            const command = cmd.toLowerCase();
+
+            if (command.includes('who created you') || command.includes('who made you')) {
+                speak("I was created by Shivam Paliwal, powered by Professor Tarun.");
+                addMessage("020 Assistant: I was created by Shivam Paliwal, powered by Professor Tarun.", 'assistant-message');
+                return;
+            }
+
+            if (command.includes('time')) {
+                const now = new Date();
+                const time = now.toLocaleTimeString();
+                speak(`The current time is ${time}`);
+                addMessage(`020 Assistant: The current time is ${time}`, 'assistant-message');
+                return;
+            }
+
+            if (command.includes('date')) {
+                const now = new Date();
+                const date = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                speak(`Today's date is ${date}`);
+                addMessage(`020 Assistant: Today's date is ${date}`, 'assistant-message');
+                return;
+            }
+
+            if (command.includes('play')) {
+                const song = command.replace('play', '').trim();
+                if (song) {
+                    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`;
+                    window.open(url, '_blank');
+                    speak(`Opening YouTube to play ${song}`);
+                    addMessage(`020 Assistant: Opening YouTube to play ${song}`, 'assistant-message');
+                }
+                return;
+            }
+
+            if (command.includes('calculate') || /[\d+\-*/()]/.test(command)) {
+                try {
+                    const expression = command.replace(/calculate|what is|how much is/gi, '').trim();
+                    const result = eval(expression.replace(/x/g, '*').replace(/÷/g, '/'));
+                    speak(`The result is ${result}`);
+                    addMessage(`020 Assistant: ${expression} = ${result}`, 'assistant-message');
+                } catch (e) {
+                    speak("Sorry, I couldn't calculate that.");
+                    addMessage("020 Assistant: Sorry, I couldn't calculate that.", 'assistant-message');
+                }
+                return;
+            }
+
+            if (command.includes('exit') || command.includes('quit')) {
+                speak("Goodbye! Zero two zero signing off.");
+                addMessage("020 Assistant: Goodbye! Closing assistant.", 'assistant-message');
+                setTimeout(() => window.close(), 2000);
+                return;
+            }
+
+            // Search Wikipedia/Google
+            if (command.includes('search') || command.includes('who is') || command.includes('what is') || command.includes('how to')) {
+                const query = command.replace(/search|who is|what is|how to/gi, '').trim();
+                if (query) {
+                    await searchWeb(query);
+                }
+                return;
+            }
+
+            // Default response
+            speak("I didn't quite understand that. Try commands like: search, time, date, play, calculate, or who created you.");
+            addMessage("020 Assistant: I didn't understand that. Try: 'search [topic]', 'time', 'date', 'play [song]', 'calculate [math]', or 'who created you'.", 'assistant-message');
+        }
+
+        // Web Search
+        async function searchWeb(query) {
+            speak(`Searching for ${query}. Please wait.`);
+            addMessage(`020 Assistant: Searching for "${query}"...`, 'assistant-message');
+
+            try {
+                // Wikipedia API
+                const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+                const response = await fetch(wikiUrl);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.extract) {
+                        addMessage(`<strong>📚 Wikipedia:</strong><br>${data.extract}`, 'assistant-message');
+                        addMessage(`<a href="${data.content_urls.desktop.page}" target="_blank" class="link">🔗 Read more on Wikipedia</a>`, 'assistant-message');
+                        speak(`According to Wikipedia, ${data.extract.substring(0, 200)}`);
+                    }
+                } else {
+                    throw new Error('Wikipedia not found');
+                }
+
+                // YouTube search
+                const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+                addMessage(`<strong>🎥 YouTube:</strong><br><a href="${ytUrl}" target="_blank" class="link">Search "${query}" on YouTube</a>`, 'assistant-message');
+
+                // Google search
+                const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                addMessage(`<a href="${googleUrl}" target="_blank" class="link">🔍 Search on Google</a>`, 'assistant-message');
+
+            } catch (error) {
+                const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                addMessage(`<strong>🔍 Search Results:</strong><br><a href="${googleUrl}" target="_blank" class="link">Search "${query}" on Google</a>`, 'assistant-message');
+                
+                const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+                addMessage(`<a href="${ytUrl}" target="_blank" class="link">🎥 Search on YouTube</a>`, 'assistant-message');
+                
+                speak("I've prepared search links for you.");
+            }
+        }
+
+        // Calculator
+        function calcClick(value) {
+            const display = document.getElementById('calcDisplay');
+            
+            if (value === '=') {
+                try {
+                    const result = eval(display.value);
+                    display.value = result;
+                    speak(`The result is ${result}`);
+                } catch {
+                    display.value = 'Error';
+                    speak("Error in calculation");
+                }
+            } else if (value === 'C') {
+                display.value = '';
+            } else {
+                display.value += value;
+            }
+        }
+
+        // Notepad
+        function saveNote() {
+            const text = document.getElementById('notepad').value;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'note.txt';
+            a.click();
+            speak("Note saved successfully");
+        }
+
+        function clearNote() {
+            document.getElementById('notepad').value = '';
+            speak("Note cleared");
+        }
+
+        // Drawing
+        function setupCanvas() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousedown', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent('mousemove', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            });
+            
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                canvas.dispatchEvent(mouseEvent);
+            });
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            
+            ctx.strokeStyle = penColor;
+            ctx.lineWidth = penSize;
+            ctx.lineCap = 'round';
+            
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.beginPath();
+        }
+
+        function setPenColor(color) {
+            penColor = color;
+        }
+
+        function setPenSize(size) {
+            penSize = size;
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            speak("Canvas cleared");
+        }
+
+        function saveDrawing() {
+            const canvas = document.getElementById('drawingCanvas');
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'drawing.png';
+            a.click();
+            speak("Drawing saved successfully");
+        }
+
+        function openDrawing() {
+            document.getElementById('drawingModal').classList.add('active');
+            speak("Opening drawing notebook");
+        }
+
+        function closeDrawing() {
+            document.getElementById('drawingModal').classList.remove('active');
+            speak("Closing drawing notebook");
+        }
+
+        // Theme
+        function applyTheme() {
+            const theme = document.getElementById('themeSelect').value;
+            const color = themes[theme];
+            document.body.style.background = color;
+            document.querySelector('.main-content').style.background = color;
+            document.querySelector('.header').style.background = color;
+            speak(`${theme} theme applied`);
+        }
+
+        function applyTextColor() {
+            const color = document.getElementById('textColorSelect').value;
+            document.getElementById('chatOutput').style.color = color;
+            speak("Text color applied");
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>
