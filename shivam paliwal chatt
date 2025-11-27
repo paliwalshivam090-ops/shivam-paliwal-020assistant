@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniChat - Real-time Messaging</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            max-height: 700px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Login Screen */
+        .login-screen {
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .login-screen h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .login-screen p {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .login-form {
+            width: 100%;
+            max-width: 420px;
+        }
+        
+        .form-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        /* Server Input */
+        .server-config {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .server-config label {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .server-config input {
+            margin-top: 6px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Main Chat UI */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .chat-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .chat-header .user-info {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+        
+        .chat-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* Contacts Sidebar */
+        .contacts-sidebar {
+            width: 280px;
+            border-right: 1px solid #e1e4e8;
+            display: flex;
+            flex-direction: column;
+            background: #fafbfc;
+        }
+        
+        .contacts-header {
+            padding: 16px 20px;
+            border-bottom: 2px solid #e1e4e8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .contacts-header h3 {
+            font-size: 16px;
+            color: #333;
+            font-weight: 700;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+            transform: rotate(180deg);
+        }
+        
+        .contacts-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .contact-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .contact-item:hover {
+            background: #f0f3ff;
+        }
+        
+        .contact-item.active {
+            background: #e8eaf6;
+            border-left: 4px solid #667eea;
+        }
+        
+        .contact-item .name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 15px;
+        }
+        
+        .contact-item .mobile {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .chat-area-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e1e4e8;
+            background: #fafbfc;
+        }
+        
+        .chat-area-header h3 {
+            font-size: 17px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.sent {
+            align-items: flex-end;
+        }
+        
+        .message-header {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        
+        .message.received .message-bubble {
+            background: white;
+            border: 1px solid #e1e4e8;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-image {
+            max-width: 280px;
+            margin-top: 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Message Input */
+        .message-input-area {
+            padding: 16px 24px;
+            border-top: 1px solid #e1e4e8;
+            background: white;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .message-input-area input[type="text"] {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e1e4e8;
+            border-radius: 24px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        
+        .message-input-area input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .icon-btn {
+            background: #f0f0f0;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 22px;
+            padding: 10px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .icon-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 15px;
+        }
+        
+        .send-btn:hover {
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        /* Hidden elements */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+        
+        .image-preview {
+            margin: 0 24px 16px 24px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 2px dashed #667eea;
+        }
+        
+        .image-preview img {
+            max-width: 80px;
+            max-height: 80px;
+            border-radius: 8px;
+        }
+        
+        .preview-info {
+            flex: 1;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .remove-preview {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .remove-preview:hover {
+            background: #c82333;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #28a745;
+            box-shadow: 0 0 8px #28a745;
+        }
+        
+        .status-offline {
+            background: #6c757d;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            
+            .contacts-sidebar {
+                width: 220px;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="login-screen">
+            <h1>💬 MiniChat</h1>
+            <p>Connect with your contacts in real-time</p>
+            
+            <div class="login-form">
+                <div class="server-config">
+                    <label>Server URL</label>
+                    <input type="text" id="serverInput" value="http://localhost:5000" placeholder="http://localhost:5000">
+                </div>
+                
+                <div class="form-group">
+                    <label>Mobile Number</label>
+                    <input type="text" id="mobileInput" placeholder="Enter your mobile number" autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label>Name (optional)</label>
+                    <input type="text" id="nameInput" placeholder="Enter your name">
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn-secondary" onclick="register()">Register</button>
+                    <button class="btn-primary" onclick="login()">Login</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Chat UI -->
+        <div id="mainUI" class="hidden">
+            <div class="chat-header">
+                <h2>💬 MiniChat</h2>
+                <div class="user-info">
+                    <span class="status-indicator status-online"></span>
+                    <span id="userInfo"></span>
+                </div>
+            </div>
+            
+            <div class="chat-body">
+                <!-- Contacts Sidebar -->
+                <div class="contacts-sidebar">
+                    <div class="contacts-header">
+                        <h3>Contacts</h3>
+                        <button class="refresh-btn" onclick="loadContacts()" title="Refresh contacts">↻</button>
+                    </div>
+                    <div class="contacts-list" id="contactsList">
+                        <!-- Contacts will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Chat Area -->
+                <div class="chat-area">
+                    <div class="chat-area-header">
+                        <h3 id="chatTitle">Select a contact to start chatting</h3>
+                    </div>
+                    
+                    <div class="messages-container" id="messagesContainer">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <p>Select a contact to start chatting</p>
+                        </div>
+                    </div>
+                    
+                    <div id="imagePreview" class="image-preview hidden"></div>
+                    
+                    <div class="message-input-area">
+                        <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="handleImageSelect()">
+                        <button class="icon-btn" onclick="document.getElementById('imageInput').click()" title="Attach image">📎</button>
+                        <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+                        <button class="send-btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let SERVER = 'http://localhost:5000';
+        let socket;
+        let currentUser = null;
+        let selectedContact = null;
+        let contacts = [];
+        let pendingImage = null;
+
+        // Register new user
+        async function register() {
+            const mobile = document.getElementById('mobileInput').value.trim();
+            const name = document.getElementById('nameInput').value.trim();
+            SERVER = document.getElementById('serverInput').value.trim();
+            
+            if (!mobile) {
+                alert('Please enter your mobile number');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${SERVER}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile, name })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    alert('✅ Registration successful! Please login now.');
+                } else {
+                    alert(`❌ Error: ${data.error || 'Registration failed'}`);
+                }
+            } catch (error) {
+                alert(`❌ Connection Error: ${error.message}\n\nMake sure the server is running at ${SERVER}`);
+            }
+        }
+
+        // Login user
+        async function login() {
+            const mobile = document.getElementById('mobileInput').value.trim();
+            SERVER = document.getElementById('serverInput').value.trim();
+            
+            if (!mobile) {
+                alert('Please enter your mobile number');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${SERVER}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mobile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    currentUser = {
+                        mobile: mobile,
+                        name: data.user.name || mobile
+                    };
+                    
+                    postLoginSetup();
+                } else {
+                    alert(`❌ Error: ${data.error || 'Login failed'}`);
+                }
+            } catch (error) {
+                alert(`❌ Connection Error: ${error.message}\n\nMake sure the server is running at ${SERVER}`);
+            }
+        }
+
+        // Setup after login
+        function postLoginSetup() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainUI').classList.remove('hidden');
+            document.getElementById('userInfo').textContent = `${currentUser.name} (${currentUser.mobile})`;
+            
+            // Connect to Socket.IO
+            socket = io(SERVER);
+            
+            socket.on('connect', () => {
+                console.log('✅ Socket connected');
+                socket.emit('register_socket', { mobile: currentUser.mobile });
+                document.querySelector('.status-indicator').className = 'status-indicator status-online';
+            });
+            
+            socket.on('new_message', (msg) => {
+                handleIncomingMessage(msg);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('❌ Socket disconnected');
+                document.querySelector('.status-indicator').className = 'status-indicator status-offline';
+            });
+            
+            loadContacts();
+        }
+
+        // Load contacts
+        async function loadContacts() {
+            try {
+                const response = await fetch(`${SERVER}/contacts`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    contacts = data.contacts.filter(c => c.mobile !== currentUser.mobile);
+                    renderContacts();
+                }
+            } catch (error) {
+                console.error('Error loading contacts:', error);
+            }
+        }
+
+        // Render contacts list
+        function renderContacts() {
+            const list = document.getElementById('contactsList');
+            list.innerHTML = '';
+            
+            if (contacts.length === 0) {
+                list.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No contacts yet</div>';
+                return;
+            }
+            
+            contacts.forEach(contact => {
+                const div = document.createElement('div');
+                div.className = 'contact-item';
+                if (selectedContact && selectedContact.mobile === contact.mobile) {
+                    div.classList.add('active');
+                }
+                
+                div.innerHTML = `
+                    <div class="name">${contact.name || contact.mobile}</div>
+                    <div class="mobile">${contact.mobile}</div>
+                `;
+                
+                div.onclick = () => selectContact(contact);
+                list.appendChild(div);
+            });
+        }
+
+        // Select contact
+        async function selectContact(contact) {
+            selectedContact = contact;
+            renderContacts();
+            
+            document.getElementById('chatTitle').textContent = `Chat with ${contact.name || contact.mobile}`;
+            
+            await loadHistory(contact.mobile);
+        }
+
+        // Load chat history
+        async function loadHistory(otherMobile) {
+            try {
+                const response = await fetch(`${SERVER}/history?a=${currentUser.mobile}&b=${otherMobile}`);
+                const data = await response.json();
+                
+                if (data.ok) {
+                    renderMessages(data.messages);
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        // Render messages
+        function renderMessages(messages) {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            messages.forEach(msg => {
+                appendMessage(msg, false);
+            });
+            
+            scrollToBottom();
+        }
+
+        // Append message to chat
+        function appendMessage(msg, isNew = true) {
+            const container = document.getElementById('messagesContainer');
+            
+            // Remove empty state if exists
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.from === currentUser.mobile ? 'sent' : 'received'}`;
+            
+            const timestamp = new Date(msg.timestamp * 1000).toLocaleString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            const sender = msg.from === currentUser.mobile ? 'You' : (selectedContact?.name || msg.from);
+            
+            let content = `
+                <div class="message-header">${sender} • ${timestamp}</div>
+                <div class="message-bubble">
+            `;
+            
+            if (msg.text) {
+                content += escapeHtml(msg.text);
+            }
+            
+            if (msg.media || msg.media_b64) {
+                const imgSrc = msg.media_b64 ? `data:image/jpeg;base64,${msg.media_b64}` : `data:image/jpeg;base64,${msg.media}`;
+                content += `<br><img src="${imgSrc}" class="message-image" onclick="window.open('${imgSrc}', '_blank')" alt="Shared image">`;
+            }
+            
+            content += `</div>`;
+            messageDiv.innerHTML = content;
+            container.appendChild(messageDiv);
+            
+            if (isNew) {
+                scrollToBottom();
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Handle incoming message
+        function handleIncomingMessage(msg) {
+            if (selectedContact && msg.from === selectedContact.mobile) {
+                appendMessage(msg, true);
+            } else {
+                // Show notification for messages from other contacts
+                const contact = contacts.find(c => c.mobile === msg.from);
+                const name = contact ? contact.name || contact.mobile : msg.from;
+                
+                // Browser notification (if permitted)
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('New Message', {
+                        body: `${name}: ${msg.text || 'Sent an image'}`,
+                        icon: '💬'
+                    });
+                } else {
+                    alert(`💬 New message from ${name}`);
+                }
+            }
+        }
+
+        // Send message
+        function sendMessage() {
+            if (!selectedContact) {
+                alert('Please select a contact first');
+                return;
+            }
+            
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!text && !pendingImage) {
+                return;
+            }
+            
+            const payload = {
+                from: currentUser.mobile,
+                to: selectedContact.mobile,
+                text: text,
+                media_b64: pendingImage ? pendingImage.data : null,
+                media_type: pendingImage ? pendingImage.type : null
+            };
+            
+            socket.emit('send_message', payload);
+            
+            // Add to local chat
+            appendMessage({
+                from: currentUser.mobile,
+                to: selectedContact.mobile,
+                text: text,
+                media_b64: pendingImage ? pendingImage.data : null,
+                timestamp: Math.floor(Date.now() / 1000)
+            }, true);
+            
+            input.value = '';
+            clearImagePreview();
+        }
+
+        // Handle image selection
+        function handleImageSelect() {
+            const input = document.getElementById('imageInput');
+            const file = input.files[0];
+            
+            if (!file) return;
+            
+            // Check file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                input.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target.result.split(',')[1];
+                pendingImage = {
+                    data: base64,
+                    type: 'image'
+                };
+                
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview">
+                    <div class="preview-info">
+                        <strong>📎 Image attached</strong><br>
+                        <small>${file.name} (${(file.size / 1024).toFixed(1)} KB)</small>
+                    </div>
+                    <button class="remove-preview" onclick="clearImagePreview()">Remove</button>
+                `;
+                preview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clear image preview
+        function clearImagePreview() {
+            pendingImage = null;
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imageInput').value = '';
+        }
+
+        // Handle Enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        }
+
+        // Request notification permission on load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Enter key on login form
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('#loginScreen input');
+            inputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        login();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
